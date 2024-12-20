@@ -3,6 +3,8 @@
 # and should be automatically triggered in certain situations (like object creation). 
 # They’re part of Python's object-oriented programming magic!
 
+import sqlite3
+
 class Task:
     def __init__(self, name):
         self.name = name
@@ -16,35 +18,48 @@ class Task:
         return f"{self.name} - {status}"
     
 class ToDoList:
-    def __init__(self):
-        self.tasks = []
+    def __init__(self, db_name="todo.db"):
+        self.conn = sqlite3.connect(db_name)
+        self.cursor = self.conn.cursor()
+        self.create_table()
+
+    def create_table(self):
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            done INTEGER DEFAULT 0
+        )
+        """)
+        self.conn.commit()
 
     def add_task(self, task_name):
-        task = Task(task_name)
-        self.tasks.append(task)
+        self.cursor.execute("INSERT INTO tasks (name, done) VALUES (?, ?)", (task_name, 0))
+        self.conn.commit()
         print(f"Task added: {task_name}")
 
     def view_tasks(self):
-        if not self.tasks:
+        self.cursor.execute("SELECT id, name, done FROM tasks")
+        tasks = self.cursor.fetchall()
+        if not tasks:
             print("No tasks created yet!")
-        else: 
-            for i, task in enumerate(self.tasks, start=1):
-                print(f"{i}. {task}")
-        
-    def mark_done(self, task_index):
-        if 0 <= task_index < len(self.tasks):
-            self.tasks[task_index].mark_done()
-            print(f"Task {task_index + 1} marked as done.")
         else:
-            print("Invalid task number.")
+            for task_id, name, done in tasks:
+                status = "Done" if done else "Not Done"
+                print(f"{task_id}. {name} - {status}")
         
-    def delete_task(self, task_index):
-        if 0 <= task_index < len(self.tasks):
-            removed_task = self.tasks.pop(task_index)
-            print(f"Deleted task: {removed_task.name}")
-        else:
-            print("Invalid task number.")
+    def mark_done(self, task_id):
+        self.cursor.execute("UPDATE tasks SET done = 1 WHERE id = ?", (task_id,))
+        self.conn.commit()
+        print(f"Task {task_id} marked as done.")
+        
+    def delete_task(self, task_id):
+        self.cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+        self.conn.commit()
+        print(f"Deleted task with ID: {task_id}")
     
+    def close_connection(self):
+        self.conn.close()
 
 def main():
     todo_list = ToDoList()
@@ -56,7 +71,7 @@ def main():
         print("3. Mark Task as Done")
         print("4. Delete Task")
         print("5. Exit")
-        choice = input("Choose an option: ")
+        choice = input("\nChoose an option: ")
     
         if choice == "1":
             task_name = input("Enter the task: ")
