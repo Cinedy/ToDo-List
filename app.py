@@ -4,6 +4,16 @@
 # They’re part of Python's object-oriented programming magic!
 
 import sqlite3
+from flask import Flask
+from routes import tasks_bp  # Import the Blueprint
+
+app = Flask(__name__)
+
+# Register the Blueprint
+app.register_blueprint(tasks_bp)
+
+if __name__ == '__main__':
+    app.run(debug=True)
 
 class Task:
     def __init__(self, name):
